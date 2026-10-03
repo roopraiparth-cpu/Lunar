@@ -1828,14 +1828,14 @@
             <span class="guide-icon" aria-hidden="true">&#9678;</span>
             <p class="card-overline">Web</p>
             <h2 class="card-title">Search or visit</h2>
-            <p class="card-description">Search in Chrome or say a website address.</p>
+            <p class="card-description">Search the web or say a website address. Links open in a new tab right here.</p>
             <div class="guide-examples"><code>search for space news</code><code>instagram.com</code><code>open youtube.com</code></div>
           </article>
           <article class="glass-card guide-card">
             <span class="guide-icon" aria-hidden="true">&#9728;</span>
             <p class="card-overline">News and weather</p>
             <h2 class="card-title">News and weather</h2>
-            <p class="card-description">Open current information in Chrome. Add a city for a specific forecast.</p>
+            <p class="card-description">Open current information in a new tab. Add a city for a specific forecast.</p>
             <div class="guide-examples"><code>latest news</code><code>today's weather</code><code>weather in Delhi</code></div>
           </article>
           <article class="glass-card guide-card">
@@ -2255,6 +2255,11 @@
         lastSpokenRevision = revision;
       } else if (revision > lastSpokenRevision) {
         lastSpokenRevision = revision;
+        if (state.open_url) {
+          // Open as a new tab in this very browser window so the link lands next
+          // to Lunar instead of in some other browser.
+          window.open(state.open_url, "_blank", "noopener");
+        }
         speakResponse(state.speech_text);
       }
 

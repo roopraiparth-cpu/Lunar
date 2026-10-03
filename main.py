@@ -1161,19 +1161,28 @@ def open_last_song():
     return {"ok": True, "message": f"Playing your last song in {player_name}.", "app": player_name}
 
 
-def find_chrome_executable():
-    candidates = [
-        Path(os.environ.get("PROGRAMFILES", r"C:\Program Files")) / "Google" / "Chrome" / "Application" / "chrome.exe",
-        Path(os.environ.get("PROGRAMFILES(X86)", r"C:\Program Files (x86)")) / "Google" / "Chrome" / "Application" / "chrome.exe",
-    ]
-    local_app_data = os.environ.get("LOCALAPPDATA")
-    if local_app_data:
-        candidates.append(Path(local_app_data) / "Google" / "Chrome" / "Application" / "chrome.exe")
+def _open_in_default_browser(url):
+    """Open a URL as a new tab in the system default browser."""
+    try:
+        return bool(webbrowser.open(url, new=2))
+    except Exception as error:
+        print(f"[browser] could not open {url}: {error}", flush=True)
+        return False
 
-    for candidate in candidates:
-        if candidate.is_file():
-            return str(candidate)
-    return shutil.which("chrome.exe") or shutil.which("chrome")
+
+def _page_result(url, message, voice):
+    """Hand a web page to the browser already showing Lunar.
+
+    A typed command travels back out through the page, which opens the link with
+    window.open() so it lands as a new tab beside Lunar, in that same browser.
+    Hands-free commands have no page gesture to borrow, so they go to the default
+    browser - the same one main() opened Lunar's own page with.
+    """
+    if voice:
+        if not _open_in_default_browser(url):
+            return {"ok": False, "message": "I couldn't open a browser for that."}
+        return {"ok": True, "message": message}
+    return {"ok": True, "message": message, "url": url}
 
 
 def normalize_spoken_url(target):
@@ -1188,7 +1197,7 @@ def normalize_spoken_url(target):
     return target.strip(" .,!?\t\r\n")
 
 
-def open_search_in_chrome(command):
+def open_search_in_browser(command, voice=False):
     prefixes = (
         "search on google for ",
         "search google for ",
@@ -1219,23 +1228,11 @@ def open_search_in_chrome(command):
     if not query:
         return {"ok": False, "message": "Tell me what you'd like me to search for."}
 
-    chrome = find_chrome_executable()
-    if not chrome:
-        return {"ok": False, "message": "I couldn't find Google Chrome on this computer."}
-
     search_url = f"https://www.google.com/search?{urlencode({'q': query})}"
-    try:
-        subprocess.Popen([chrome, search_url], close_fds=True, creationflags=CREATE_NO_WINDOW)
-        return {
-            "ok": True,
-            "message": f"Searching Google for {query} in Chrome.",
-            "url": search_url,
-        }
-    except OSError as error:
-        return {"ok": False, "message": f"I couldn't search in Chrome: {error}"}
+    return _page_result(search_url, f"Searching Google for {query} in your browser.", voice)
 
 
-def open_url_in_chrome(command):
+def open_url_in_browser(command, voice=False):
     prefixes = ("open ", "go to ", "visit ", "navigate to ", "browse to ")
     explicit_open = False
     target = command
@@ -1247,17 +1244,36 @@ def open_url_in_chrome(command):
 
     target = re.sub(r"\s+(?:in|on|using)\s+(?:google\s+)?chrome[.!?]*$", "", target, flags=re.IGNORECASE).strip()
     target = normalize_spoken_url(target)
+    # Spoken short names ("open yt") resolve here. App names are deliberately
+    # absent so open_application() still gets a chance to launch them.
     common_sites = {
-        "google": "https://www.google.com",
-        "news": "https://news.google.com/",
-        "youtube": "https://www.youtube.com",
-        "gmail": "https://mail.google.com",
-        "wikipedia": "https://www.wikipedia.org",
-        "reddit": "https://www.reddit.com",
-        "github": "https://github.com",
+        "amazon": "https://www.amazon.com",
         "chatgpt": "https://chatgpt.com",
+        "drive": "https://drive.google.com",
+        "fb": "https://www.facebook.com",
+        "facebook": "https://www.facebook.com",
+        "gh": "https://github.com",
+        "github": "https://github.com",
+        "gmail": "https://mail.google.com",
+        "google": "https://www.google.com",
+        "ig": "https://www.instagram.com",
+        "insta": "https://www.instagram.com",
+        "instagram": "https://www.instagram.com",
+        "linkedin": "https://www.linkedin.com",
+        "netflix": "https://www.netflix.com",
+        "news": "https://news.google.com/",
+        "reddit": "https://www.reddit.com",
+        "stackoverflow": "https://stackoverflow.com",
+        "twitter": "https://x.com",
+        "wa": "https://web.whatsapp.com",
         "whatsapp": "https://web.whatsapp.com",
         "whatsapp web": "https://web.whatsapp.com",
+        "wiki": "https://www.wikipedia.org",
+        "wikipedia": "https://www.wikipedia.org",
+        "x": "https://x.com",
+        "yt": "https://www.youtube.com",
+        "ytb": "https://www.youtube.com",
+        "youtube": "https://www.youtube.com",
     }
     if explicit_open and target.lower() in common_sites:
         target = common_sites[target.lower()]
@@ -1278,21 +1294,7 @@ def open_url_in_chrome(command):
     except ValueError:
         return {"ok": False, "message": "That website address doesn't look valid."}
 
-    chrome = find_chrome_executable()
-    if not chrome:
-        return {"ok": False, "message": "I couldn't find Google Chrome on this computer."}
-    try:
-        subprocess.Popen([chrome, target], close_fds=True, creationflags=CREATE_NO_WINDOW)
-        return {"ok": True, "message": f"Opening {parsed.netloc} in Chrome.", "url": target}
-    except OSError as error:
-        return {"ok": False, "message": f"I couldn't open that website in Chrome: {error}"}
-
-
-def _open_information_page(url, message):
-    result = open_url_in_chrome(f"open {url}")
-    if result.get("ok"):
-        result["message"] = message
-    return result
+    return _page_result(target, f"Opening {parsed.netloc} in your browser.", voice)
 
 
 def _clean_information_command(command):
@@ -1313,7 +1315,12 @@ def _clean_information_command(command):
     return re.sub(r"\s+", " ", cleaned).strip(" .,!?:;\"'")
 
 
-def open_news_in_chrome(command):
+def open_news_in_browser(command, voice=False):
+    # "search for space news" is a search, not a request for news about space.
+    # News is checked before search in handle_command, so hand these back.
+    if str(command).lower().startswith(("search ", "look up ", "google ")):
+        return None
+
     phrase = _clean_information_command(command)
     phrase = re.sub(r"\b(?:today's|todays|today|latest|the)\b", " ", phrase)
     phrase = re.sub(r"\s+", " ", phrase).strip()
@@ -1337,11 +1344,11 @@ def open_news_in_chrome(command):
 
     if topic:
         url = f"https://news.google.com/search?{urlencode({'q': topic})}"
-        return _open_information_page(url, f"Opening the latest news about {topic} in Chrome.")
-    return _open_information_page("https://news.google.com/", "Opening the latest news in Chrome.")
+        return _page_result(url, f"Opening the latest news about {topic} in your browser.", voice)
+    return _page_result("https://news.google.com/", "Opening the latest news in your browser.", voice)
 
 
-def open_weather_in_chrome(command):
+def open_weather_in_browser(command, voice=False):
     phrase = _clean_information_command(command)
     phrase = re.sub(r"^(?:the\s+)+", "", phrase)
     phrase = re.sub(r"^(?:today'?s?|today)\s+", "", phrase)
@@ -1360,10 +1367,10 @@ def open_weather_in_chrome(command):
     query = "weather today" + (f" in {location}" if location else "")
     url = f"https://www.google.com/search?{urlencode({'q': query})}"
     message = (
-        f"Opening today's weather for {location} in Chrome."
-        if location else "Opening today's local weather in Chrome."
+        f"Opening today's weather for {location} in your browser."
+        if location else "Opening today's local weather in your browser."
     )
-    return _open_information_page(url, message)
+    return _page_result(url, message, voice)
 
 
 class WhatsAppInbox:
@@ -1466,7 +1473,7 @@ def handle_command(text, voice=False):
 
     homework_command = command.replace("’", "'").strip(" .,!?:;")
     if homework_command == "homework":
-        return open_url_in_chrome(f"open {HOMEWORK_URL}")
+        return open_url_in_browser(f"open {HOMEWORK_URL}", voice)
 
     if command in (
         "play my last song",
@@ -1603,11 +1610,11 @@ def handle_command(text, voice=False):
     ):
         return get_current_active_window()
 
-    news_result = open_news_in_chrome(original_command)
+    news_result = open_news_in_browser(original_command, voice)
     if news_result is not None:
         return news_result
 
-    weather_result = open_weather_in_chrome(original_command)
+    weather_result = open_weather_in_browser(original_command, voice)
     if weather_result is not None:
         return weather_result
 
@@ -1624,11 +1631,11 @@ def handle_command(text, voice=False):
     ):
         return read_whatsapp_messages()
 
-    search_result = open_search_in_chrome(original_command)
+    search_result = open_search_in_browser(original_command, voice)
     if search_result is not None:
         return search_result
 
-    url_result = open_url_in_chrome(original_command)
+    url_result = open_url_in_browser(original_command, voice)
     if url_result is not None:
         return url_result
 
@@ -1672,6 +1679,7 @@ class LunarController:
             "wake_stopping": False,
             "incoming_call": False,
             "dictation_enabled": False,
+            "open_url": None,
         }
         self._recognizer = sr.Recognizer() if sr is not None else None
         self._microphone = SoundDeviceMicrophone() if sr is not None and sd is not None else None
@@ -1695,6 +1703,8 @@ class LunarController:
                 "speech_text": result["message"],
                 "revision": self._state["revision"] + 1,
                 "ok": result["ok"],
+                # Read by the page to open the link in this same browser window.
+                "open_url": result.get("url"),
             })
 
     def start_listening(self):
