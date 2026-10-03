@@ -12,7 +12,7 @@
 
 **[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features)**
 
-*Note - Web Release will not be operatable after 15th October, 2026 , but will be available for download, but the New features would not be accessible*
+*Note - Web Release will not be operatable after 30th October, 2026 , but will be available for download, but the New features would not be accessible*
 
 </div>
 
