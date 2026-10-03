@@ -1,0 +1,9 @@
+SpeechRecognition
+sounddevice
+psutil
+pywin32
+pywinauto
+pynvml
+pycaw
+comtypes
+wmi
