@@ -6,8 +6,8 @@
 
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![Python](https://img.shields.io/badge/python-3.12%2B-informational)](https://www.python.org/)
-[![Release](https://img.shields.io/github/v/release/roopraiparth-cpu/Lunar)](https://github.com/roopraiparth-cpu/Lunar/releases)
-[![License](https://img.shields.io/github/license/roopraiparth-cpu/Lunar)](LICENSE)
+[![Release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features)**
 
