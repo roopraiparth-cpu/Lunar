@@ -11,6 +11,7 @@
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features) · [Why it's light](#why-its-light)**
+
 *Note - When Downloading it may appear to be a malicious file, but be tension free ! It is safe*
 
 | ![Lunar dashboard](https://github.com/user-attachments/assets/b394b95f-c290-47b6-b9ad-d56d7b37a140) | ![Lunar interface](https://github.com/user-attachments/assets/84a0ba57-cd0e-4228-a6ad-632b7b341503) | ![Lunar in action](https://github.com/user-attachments/assets/435983f3-bf30-4f5f-a054-60d4d37f8abe) |
