@@ -2,7 +2,7 @@
 
 # LUNAR
 
-*Your personal JARVIS — a voice-driven AI assistant for Windows.*
+*Your personal JARVIS — A voice-driven AI assistant for Windows.*
 
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![Python](https://img.shields.io/badge/python-3.12%2B-informational)](https://www.python.org/)
