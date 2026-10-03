@@ -6,10 +6,13 @@
 
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![Python](https://img.shields.io/badge/python-3.12%2B-informational)](https://www.python.org/)
-[![Release](https://img.shields.io/badge/release-v1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![Release](https://img.shields.io/badge/Web_Releases-Lunar_Web_V_1.0-red)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![Release](https://img.shields.io/badge/Desktop_Releases-Lunar_Desktop_V_1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features)**
+
+*Note - Web Release will not be operatable after 15th October, 2026 , but will be available for download, but the New features would not be accessible*
 
 </div>
 
