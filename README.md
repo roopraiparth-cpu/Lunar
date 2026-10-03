@@ -8,11 +8,11 @@
 
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![Python](https://img.shields.io/badge/python-3.12%2B-informational)](https://www.python.org/)
-[![Desktop Release](https://img.shields.io/badge/desktop_release-v1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
-[![Web Release](https://img.shields.io/badge/web_release-v1.0-red)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![Desktop Release](https://img.shields.io/badge/desktop-v1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![Web Release](https://img.shields.io/badge/web-v1.0-red)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-**[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features) · [Why it's light](#why-its-light)**
+**[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features) · [Support](#support)**
 
 | ![Lunar dashboard](https://github.com/user-attachments/assets/b394b95f-c290-47b6-b9ad-d56d7b37a140) | ![Lunar interface](https://github.com/user-attachments/assets/84a0ba57-cd0e-4228-a6ad-632b7b341503) | ![Lunar in action](https://github.com/user-attachments/assets/435983f3-bf30-4f5f-a054-60d4d37f8abe) |
 |---|---|---|
@@ -23,97 +23,114 @@
 
 ## About
 
-Lunar is a local AI assistant inspired by JARVIS. Talk to your PC and it
-responds — reporting system health, controlling volume and brightness, and
-running commands.
+Lunar is a Windows assistant inspired by JARVIS. It helps you check system
+status, control volume and brightness, and use voice commands through a
+straightforward interface.
 
-It ships in two editions, both powered by the same local engine:
+Lunar is available in two editions:
 
-| | Desktop | Web |
+| Edition | Download | Interface |
 |---|---|---|
-| **Executable** | `Lunar.exe` | `LunarWeb.exe` |
-| **Interface** | Native window (Tkinter/GDI) | Your browser |
-| **Entry point** | `main.py` | `web.py` |
+| Desktop | `Lunar.exe` | Native Windows window |
+| Web | `LunarWeb.exe` | Opens in your browser |
 
-<p align="center"><img src="https://github.com/user-attachments/assets/2f804a33-9550-4186-814c-c5096e2dda97" alt="Lunar desktop app" width="238"/></p>
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/2f804a33-9550-4186-814c-c5096e2dda97" alt="Lunar desktop app" width="238">
+</p>
 
-Everything runs on your machine. No cloud dependency, no data leaving your PC.
+Lunar's system-control engine runs locally on your PC. The Web edition loads
+fonts from Google Fonts.
 
-> **Note:** the Web edition (v1.0) will be retired on **30 October 2026**. It
-> will remain downloadable but will not receive new features. New development
-> continues in the Desktop edition.
+> **Web edition notice:** The Web edition is scheduled to stop operating after
+> **30 October 2026**. Its current release will remain available to download,
+> but it will not receive new features. New development will focus on the
+> Desktop edition.
 
 ## Getting Started
 
-1. Download from the [Releases](https://github.com/roopraiparth-cpu/Lunar/releases) page
-2. Run **Lunar.exe** (desktop) or **LunarWeb.exe** (browser) — a desktop shortcut is created automatically
-3. Start talking
+1. Visit the [Releases](https://github.com/roopraiparth-cpu/Lunar/releases) page.
+2. Download and run `Lunar.exe` for the Desktop edition or `LunarWeb.exe` for
+   the Web edition. Python is not required to run either packaged app.
+3. Start using Lunar.
 
-> On first launch, Windows SmartScreen may warn about unsigned apps. Click
-> **More info → Run anyway**.
+On first launch, Windows SmartScreen may warn that the app is unsigned. Only
+continue if you downloaded Lunar from this repository.
 
-Run one edition at a time — they share a server, a port, and the microphone.
+Run one edition at a time. They share a server, a port, and the microphone.
 
 ## Commands
 
-| Say this…          | Lunar does…                          |
-|--------------------|--------------------------------------|
-| "check battery"    | Reports battery % and charging state |
-| "volume up / down" | Adjusts system volume                |
-| "mute / unmute"    | Toggles audio                        |
+| Say this… | Lunar does… |
+|---|---|
+| “check battery” | Reports the battery level and charging state |
+| “volume up” or “volume down” | Adjusts system volume |
+| “mute” or “unmute” | Changes the audio mute state |
+| “homework” | Opens the configured school portal |
 
-The window also shows live CPU, RAM, GPU, battery, volume, and brightness —
-each with quick controls you can click without saying a word.
+The interface also shows live CPU, RAM, GPU, battery, volume, and brightness
+information. You can use its controls without speaking.
 
 ## Features
 
-- Voice interaction with natural spoken commands
-- Hands-free wake mode ("Lunar …") and dictation
-- Live system telemetry — CPU, RAM, GPU, battery, volume, brightness
-- Audio and brightness control by voice or by click
-- Native desktop window — no browser engine required
-- Spoken replies through Windows SAPI, with selectable voice and speed
-- Zero-setup installation with automatic desktop shortcut
+- Voice commands, wake mode, and dictation
+- Live system information: CPU, RAM, GPU, battery, volume, and brightness
+- Volume and brightness controls by voice or through the interface
+- Native Desktop edition built with Tkinter and GDI
+- Spoken replies using Windows SAPI, with voice and speed options
+- Automatic Desktop shortcut for the Desktop edition
 
 ## Why it's light
 
-The desktop app is a plain Tkinter window drawn with GDI — no browser engine,
-no GPU compositing, no web fonts:
+Approximate measurements for the Desktop edition:
 
-- **~71 MB** RAM, single process
-- **~0.8%** of one CPU core when idle — the interface only redraws while Lunar
-  is listening, working, or speaking
-- **No GPU usage** beyond reading the utilisation counter
+- **About 71 MB of RAM**
+- **About 0.8% CPU while idle**; usage varies by hardware and activity
+- **No GPU rendering**; Lunar reads the GPU utilisation counter for system
+  information
 
-The Web edition costs the same on Lunar's side; whatever the browser itself
-uses is on the browser.
+The Web edition's browser may use additional system resources.
 
 ## For Developers
 
 ```bash
 git clone https://github.com/roopraiparth-cpu/Lunar.git
 cd Lunar
+python -m venv .venv
+.venv\Scripts\activate
 pip install -r requirements.txt
 
-python main.py     # desktop window
-python web.py      # browser interface
+python main.py     # Desktop edition
+python web.py      # Web edition
 ```
 
-Point Lunar at your own portal with an environment variable before starting:
+To configure the portal opened by the `homework` command, set
+`LUNAR_HOMEWORK_URL` in Windows Command Prompt before starting Lunar:
 
 ```bat
 set LUNAR_HOMEWORK_URL=https://your-school.example/feed
+python main.py
 ```
 
 | File | Role |
-|------|------|
-| `main.py`     | Command handling, system integration, the local API server |
-| `lunar_ui.py` | The native desktop window |
-| `web.py`      | Web entry point: serves `lunar.html`, opens the browser |
-| `lunar.html`  | The browser interface, used only by `LunarWeb.exe` |
+|---|---|
+| `main.py` | Command handling, system integration, and the local API server |
+| `lunar_ui.py` | Native Desktop interface |
+| `web.py` | Web entry point; serves `lunar.html` and opens the browser |
+| `lunar.html` | Interface used by the Web edition |
 
-Both executables build from the repo with `pyinstaller Lunar.spec` and
-`pyinstaller LunarWeb.spec`.
+Build the executables with the included PyInstaller specifications:
+
+```bash
+pyinstaller Lunar.spec
+pyinstaller LunarWeb.spec
+```
+
+## Support
+
+Found a bug or have a feature request? Please open a
+[GitHub issue](https://github.com/roopraiparth-cpu/Lunar/issues).
+
+For other support, email [roopraiparth900@gmail.com](mailto:roopraiparth900@gmail.com).
 
 ## License
 
