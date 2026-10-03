@@ -1,14 +1,14 @@
 @echo off
-title Lunar
+title Lunar Web
 rem Paths are derived from this script's own folder, so Lunar works wherever
 rem the project is cloned and nothing here depends on a specific user account.
 cd /d "%~dp0"
 
 echo ================================================
-echo    LUNAR  -  local voice assistant
+echo    LUNAR WEB  -  local voice assistant in your browser
 echo.
-echo    The Lunar window stays in front of you.
-echo    Closing that window stops Lunar.
+echo    Keep this window OPEN while using Lunar.
+echo    Press Ctrl+C or use Exit in the page to stop.
 echo ================================================
 echo.
 
@@ -20,5 +20,5 @@ rem -- Pick a Python: the py launcher, or the project venv --
 set "PYEXE=py"
 where py >nul 2>&1 || set "PYEXE=%~dp0.venv\Scripts\python.exe"
 
-rem -- Run the desktop app (blocking) --
-"%PYEXE%" main.py
+rem -- Run the web app in this window (blocking) --
+"%PYEXE%" web.py

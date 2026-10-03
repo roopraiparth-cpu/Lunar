@@ -1,3 +1,4 @@
+import ctypes
 import json
 import os
 import re
@@ -19,7 +20,20 @@ CREATE_NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0)
 HOST = "127.0.0.1"
 PORT = 8765
 PAGE_PATH = Path(__file__).with_name("lunar.html")
-HOMEWORK_URL = "https://stjoseph.schoolpad.in/dashboardFeed/feed"
+
+# The homework portal belongs to whichever school you attend, so it is
+# configured rather than baked in. Point LUNAR_HOMEWORK_URL at your own portal:
+#     set LUNAR_HOMEWORK_URL=https://your-school.example/feed
+# Left unset, the "homework" command simply says it has no link to open.
+HOMEWORK_ENV_VAR = "LUNAR_HOMEWORK_URL"
+HOMEWORK_URL = os.environ.get(HOMEWORK_ENV_VAR, "").strip()
+
+# The two interfaces: a native window (main.py) and the browser page (web.py).
+# They share this server, this port, and everything below it - only the way you
+# reach the assistant differs.
+UI_DESKTOP = "desktop"
+UI_WEB = "web"
+SERVE_UI = False   # only the web build serves lunar.html
 
 APP_ALIASES = {
     "browser": "microsoftedge",
@@ -1016,26 +1030,60 @@ def _extract_caller_info(window):
 _CALL_WATCHER = {"key": None, "announced": False}
 
 
+def _find_incoming_call_title():
+    """Title of a Phone Link call window, found with plain Win32 window listing.
+
+    Enumerating every window through UI Automation costs most of a second, so it
+    is reserved for reading caller details once a call has actually been spotted.
+    """
+    try:
+        import win32gui
+    except ImportError:
+        return None
+
+    found = []
+
+    def callback(handle, _extra):
+        try:
+            if win32gui.IsWindowVisible(handle):
+                title = win32gui.GetWindowText(handle) or ""
+                if "incoming call" in title.lower():
+                    found.append(title)
+                    return False        # stop enumerating
+        except Exception:
+            pass
+        return True
+
+    try:
+        win32gui.EnumWindows(callback, None)
+    except Exception:
+        return None
+    return found[0] if found else None
+
+
+def _find_incoming_call_window():
+    """UI Automation handle for the call window; only called once per call."""
+    try:
+        from pywinauto import Desktop
+        for top_window in Desktop(backend="uia").windows():
+            if "incoming call" in (top_window.window_text() or "").lower():
+                return top_window
+    except Exception:
+        pass
+    return None
+
+
 def _incoming_call_watcher():
     """Watch for Phone Link incoming-call windows and announce them once per call."""
     while True:
-        incoming_window = None
-        window_key = None
-        try:
-            from pywinauto import Desktop
-            for top_window in Desktop(backend="uia").windows():
-                if "incoming call" in (top_window.window_text() or "").lower():
-                    incoming_window = top_window
-                    window_key = top_window.window_text() or "incoming"
-                    break
-        except Exception:
-            incoming_window = None
+        window_key = _find_incoming_call_title()
 
-        if incoming_window is not None:
+        if window_key is not None:
             if not _CALL_WATCHER["announced"]:
                 _CALL_WATCHER["announced"] = True
                 _CALL_WATCHER["key"] = window_key
-                caller = _extract_caller_info(incoming_window)
+                call_window = _find_incoming_call_window()
+                caller = _extract_caller_info(call_window) if call_window is not None else None
                 message = f"Incoming call from {caller}." if caller else "Incoming call."
                 try:
                     with CONTROLLER._lock:
@@ -1473,6 +1521,14 @@ def handle_command(text, voice=False):
 
     homework_command = command.replace("’", "'").strip(" .,!?:;")
     if homework_command == "homework":
+        if not HOMEWORK_URL:
+            return {
+                "ok": False,
+                "message": (
+                    "I don't have a homework link set. Set the "
+                    f"{HOMEWORK_ENV_VAR} environment variable to your school portal."
+                ),
+            }
         return open_url_in_browser(f"open {HOMEWORK_URL}", voice)
 
     if command in (
@@ -1938,11 +1994,22 @@ SYSTEM_METRICS = {
     "battery_charging": None,
     "updated_at": 0,
 }
-_GPU_STATE = {"nvml_ok": None, "nvml_handle": None, "name_queried": False}
+_GPU_STATE = {"nvml_ok": None, "nvml_handle": None, "name_queried": False,
+              "slow_probe_at": 0.0}
+
+
+def _gpu_name():
+    """Adapter name via WMI, in-process, instead of another PowerShell launch."""
+    try:
+        import wmi
+        adapter = wmi.WMI().query("SELECT Name FROM Win32_VideoController")[0]
+        return str(adapter.Name).strip() or None
+    except Exception:
+        return None
 
 
 def _gpu_sample():
-    """Sample GPU utilization: NVML first, then Windows performance counters."""
+    """Sample GPU utilization: NVML where it exists, throttled PowerShell if not."""
     if _GPU_STATE["nvml_ok"] is None:
         try:
             import pynvml
@@ -1964,6 +2031,16 @@ def _gpu_sample():
         except Exception:
             _GPU_STATE["nvml_ok"] = False
 
+    if not _GPU_STATE["name_queried"]:
+        SYSTEM_METRICS["gpu_name"] = _gpu_name()
+        _GPU_STATE["name_queried"] = True
+
+    # Without NVML this costs about a second, because it launches PowerShell. A
+    # gauge does not need a reading every two seconds, so it is throttled hard.
+    now = time.monotonic()
+    if now - _GPU_STATE["slow_probe_at"] < 30:
+        return SYSTEM_METRICS.get("gpu")
+    _GPU_STATE["slow_probe_at"] = now
     try:
         command = (
             "Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUEngine "
@@ -1978,21 +2055,7 @@ def _gpu_sample():
             timeout=8,
             creationflags=CREATE_NO_WINDOW,
         )
-        value = int(result.stdout.strip() or 0)
-        value = min(100, max(0, value))
-        if not _GPU_STATE["name_queried"]:
-            try:
-                name_result = subprocess.run(
-                    ["powershell.exe", "-NoProfile", "-Command",
-                     "(Get-CimInstance Win32_VideoController | Select-Object -First 1).Name"],
-                    capture_output=True, text=True, timeout=8,
-                    creationflags=CREATE_NO_WINDOW,
-                )
-                SYSTEM_METRICS["gpu_name"] = name_result.stdout.strip() or None
-            except Exception:
-                pass
-            _GPU_STATE["name_queried"] = True
-        return value
+        return min(100, max(0, int(result.stdout.strip() or 0)))
     except Exception:
         return None
 
@@ -2048,22 +2111,25 @@ class LunarRequestHandler(BaseHTTPRequestHandler):
             state["metrics"].update(_CONTROLS_METRICS)
             self._send_json(200, state)
             return
-        if route not in ("/", "/lunar.html", "/jarvis.html"):
-            self._send_json(404, {"ok": False, "message": "Not found"})
+
+        if SERVE_UI and route in ("/", "/lunar.html", "/jarvis.html"):
+            try:
+                page = PAGE_PATH.read_bytes()
+            except OSError:
+                self._send_json(500, {"ok": False, "message": "Lunar UI file is missing"})
+                return
+
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(page)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(page)
             return
 
-        try:
-            page = PAGE_PATH.read_bytes()
-        except OSError:
-            self._send_json(500, {"ok": False, "message": "Lunar UI file is missing"})
-            return
-
-        self.send_response(200)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(page)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(page)
+        # The desktop window replaces the page. The API stays up either way, for
+        # the WhatsApp Reader extension.
+        self._send_json(404, {"ok": False, "message": "Open the Lunar desktop app"})
 
     def do_POST(self):
         route = urlsplit(self.path).path
@@ -2436,23 +2502,123 @@ def shutdown_app():
     print("[exit] Lunar stopped", flush=True)
 
 
-def main():
-    global _SERVER
-    server = ThreadingHTTPServer((HOST, PORT), LunarRequestHandler)
-    server.daemon_threads = True
-    _SERVER = server
-    create_desktop_shortcut()
-    url = f"http://{HOST}:{PORT}/"
-    if os.environ.get("LUNAR_NO_BROWSER") != "1" and os.environ.get("JARVIS_NO_BROWSER") != "1":
-        threading.Timer(0.7, webbrowser.open_new, args=(url,)).start()
+_INSTANCE_MUTEX = None
+
+
+def _acquire_single_instance():
+    """Hold a named mutex so only one Lunar runs at a time.
+
+    Two copies would double the memory use and fight over the microphone, so a
+    second launch just tells the user and quits.
+    """
+    global _INSTANCE_MUTEX
+    try:
+        # use_last_error captures the status right after the call; anything
+        # ctypes does in between would otherwise overwrite the thread's value.
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.CreateMutexW.restype = ctypes.c_void_p
+        kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
+        handle = kernel32.CreateMutexW(None, False, "Local\\LunarAssistant")
+        if not handle:
+            return True                      # could not check; let Lunar run
+        if ctypes.get_last_error() == 183:   # ERROR_ALREADY_EXISTS
+            kernel32.CloseHandle(handle)
+            return False
+        _INSTANCE_MUTEX = handle             # held for the life of the process
+        return True
+    except Exception:
+        return True
+
+
+def _serve_loop(server):
+    """Serve the local API for as long as the interface is open.
+
+    The WhatsApp Reader extension posts to /api/whatsapp/snapshot, so the server
+    runs in-process beside whichever interface is showing rather than as a
+    separate app.
+    """
     try:
         server.serve_forever()
     except KeyboardInterrupt:
         pass
-    finally:
+    except Exception as error:
+        print(f"[server] stopped: {error}", flush=True)
+
+
+def _notify_ui():
+    """The desktop shell, or None in a build that does not ship it."""
+    try:
+        import lunar_ui
+        return lunar_ui
+    except ImportError:
+        return None
+
+
+def _notify(ui, title, message, kind="error"):
+    """Report a startup problem. The windowed build has no console to print to."""
+    if ui is None:
+        print(f"[{title}] {message}", flush=True)
+    else:
+        ui.notify_error(title, message, kind=kind)
+
+
+def _start_backend(interface, ui):
+    """Take the single-instance lock and start the shared local server.
+
+    Returns (server, exit_code). A None server means Lunar should just quit:
+    exit_code 0 if another copy already owns the assistant, 1 if startup failed.
+    """
+    global _SERVER, SERVE_UI
+
+    if not _acquire_single_instance():
+        _notify(ui, "Lunar is already running",
+                "Another copy of Lunar is already open.\n\nLook for it on your taskbar, "
+                "or check the system tray.", kind="info")
+        return None, 0
+
+    try:
+        server = ThreadingHTTPServer((HOST, PORT), LunarRequestHandler)
+    except OSError as error:
+        print(f"[server] port {PORT} unavailable: {error}", flush=True)
+        _notify(ui, "Lunar could not start",
+                f"Port {PORT} is already in use, so another copy of Lunar is probably "
+                f"still running.\n\nClose it, then open Lunar again.")
+        return None, 1
+
+    server.daemon_threads = True
+    _SERVER = server
+    SERVE_UI = interface == UI_WEB
+    threading.Thread(target=_serve_loop, args=(server,), daemon=True).start()
+    return server, None
+
+
+def _finish(server):
+    """Stop the server and release everything the shutdown path owns."""
+    shutdown_app()
+    try:
         server.server_close()
-    sys.exit(0)
+    except Exception:
+        pass
+
+
+def main():
+    """Desktop interface: Lunar in its own native window."""
+    ui = _notify_ui()
+    if ui is None:
+        print("[ui] lunar_ui.py is missing next to main.py", flush=True)
+        return 1
+
+    server, exit_code = _start_backend(UI_DESKTOP, ui)
+    if server is None:
+        return exit_code
+
+    create_desktop_shortcut()
+    try:
+        ui.run_desktop(sys.modules[__name__])
+    finally:
+        _finish(server)
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
