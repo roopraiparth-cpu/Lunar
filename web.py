@@ -1,11 +1,10 @@
 """Web interface for Lunar.
 
-The same assistant, the same commands, the same local server as the desktop app
-- only the way you reach it differs. This entry point serves lunar.html and
-opens your browser, and builds as LunarWeb.exe next to Lunar.exe.
+The entry point for Lunar: it serves lunar.html and opens your browser, and
+builds as LunarWeb.exe. The assistant itself lives in main.py.
 
-Both interfaces share one server, one port, and one microphone, so only one of
-them can run at a time; Lunar refuses to start twice and says so.
+Only one Lunar can run at a time - one server, one port, one microphone - so a
+second launch tells you and quits.
 """
 
 import os
@@ -31,8 +30,7 @@ def _open_browser(url):
 
 
 def main():
-    ui = lunar._notify_ui()
-    server, exit_code = lunar._start_backend(lunar.UI_WEB, ui)
+    server, exit_code = lunar._start_backend()
     if server is None:
         return exit_code
 

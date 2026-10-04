@@ -28,12 +28,10 @@ PAGE_PATH = Path(__file__).with_name("lunar.html")
 HOMEWORK_ENV_VAR = "LUNAR_HOMEWORK_URL"
 HOMEWORK_URL = os.environ.get(HOMEWORK_ENV_VAR, "").strip()
 
-# The two interfaces: a native window (main.py) and the browser page (web.py).
-# They share this server, this port, and everything below it - only the way you
-# reach the assistant differs.
-UI_DESKTOP = "desktop"
-UI_WEB = "web"
-SERVE_UI = False   # only the web build serves lunar.html
+# Lunar's interface is the browser page this server serves. main.py holds the
+# assistant itself - commands, system integration and the local API - and web.py
+# is the entry point that starts it.
+SERVE_UI = False   # set once the server is up; gates serving lunar.html
 
 APP_ALIASES = {
     "browser": "microsoftedge",
@@ -211,7 +209,7 @@ def open_application(requested_name):
 
 
 # ---------------- Closing apps ----------------
-# Never close these: the desktop shell, core Windows services, or Lunar itself.
+# Never close these: core Windows services, or Lunar itself.
 PROTECTED_PROCESS_NAMES = {
     "explorer", "winlogon", "csrss", "services", "lsass", "smss", "wininit",
     "dwm", "sihost", "ctfmon", "svchost", "audiodg", "spoolsv", "searchhost",
@@ -1700,13 +1698,21 @@ def handle_command(text, voice=False):
         return close_result
 
     app_name = None
+    prefixed = False
     if command in ("claude", "cloud"):
         app_name = "claude"
     else:
         for prefix in ("open ", "launch ", "start "):
             if command.startswith(prefix):
+                prefixed = True
                 app_name = command[len(prefix):].strip()
                 break
+
+    # "open" on its own leaves app_name empty, and the bare keyword would fall
+    # through to the fuzzy app resolver below - which happily matched "open" to
+    # OpenShot and launched it. Ask which app, the way "close" already does.
+    if (prefixed and not app_name) or command in ("open", "launch", "start"):
+        return {"ok": False, "message": "Which app should I open? Try saying open notepad."}
 
     if app_name:
         return open_application(app_name)
@@ -2112,7 +2118,7 @@ class LunarRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, state)
             return
 
-        if SERVE_UI and route in ("/", "/lunar.html", "/jarvis.html"):
+        if SERVE_UI and route in ("/", "/lunar.html"):
             try:
                 page = PAGE_PATH.read_bytes()
             except OSError:
@@ -2127,9 +2133,9 @@ class LunarRequestHandler(BaseHTTPRequestHandler):
             self.wfile.write(page)
             return
 
-        # The desktop window replaces the page. The API stays up either way, for
-        # the WhatsApp Reader extension.
-        self._send_json(404, {"ok": False, "message": "Open the Lunar desktop app"})
+        # Unknown page route. The API stays up regardless, for the WhatsApp
+        # Reader extension.
+        self._send_json(404, {"ok": False, "message": "Not found"})
 
     def do_POST(self):
         route = urlsplit(self.path).path
@@ -2428,49 +2434,9 @@ def brightness_command(command):
     return None
 
 
-# ---------------- Desktop shortcut & shutdown ----------------
+# ---------------- Shutdown ----------------
 _SERVER = None
 _SHUTDOWN_REQUESTED = threading.Event()
-
-
-def _desktop_folder():
-    """Resolve the real Desktop folder, honouring OneDrive redirection."""
-    from win32com.shell import shell, shellcon
-    return shell.SHGetKnownFolderPath(shellcon.FOLDERID_Desktop)
-
-
-def create_desktop_shortcut():
-    """Point a Desktop shortcut at the running exe. Packaged builds only."""
-    if not getattr(sys, "frozen", False):
-        return
-    try:
-        import pythoncom
-        import win32com.client
-
-        try:
-            desktop = _desktop_folder()
-        except Exception:
-            desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        os.makedirs(desktop, exist_ok=True)
-        link_path = os.path.join(desktop, "Lunar.lnk")
-
-        pythoncom.CoInitialize()
-        try:
-            script_shell = win32com.client.Dispatch("WScript.Shell")
-            link = script_shell.CreateShortCut(link_path)
-            # In a onefile build sys.executable is Lunar.exe itself, not the
-            # temporary _MEI extraction folder, so the shortcut survives restarts.
-            link.TargetPath = sys.executable
-            link.WorkingDirectory = os.path.dirname(sys.executable)
-            link.IconLocation = f"{sys.executable},0"
-            link.Description = "Lunar assistant"
-            link.Save()
-        finally:
-            pythoncom.CoUninitialize()
-        print(f"[startup] Desktop shortcut ready: {link_path}", flush=True)
-    except Exception as error:
-        # A shortcut failure must never stop Lunar from starting.
-        print(f"[startup] Desktop shortcut skipped: {error}", flush=True)
 
 
 def _release_audio():
@@ -2545,25 +2511,13 @@ def _serve_loop(server):
         print(f"[server] stopped: {error}", flush=True)
 
 
-def _notify_ui():
-    """The desktop shell, or None in a build that does not ship it."""
-    try:
-        import lunar_ui
-        return lunar_ui
-    except ImportError:
-        return None
-
-
-def _notify(ui, title, message, kind="error"):
+def _notify(title, message):
     """Report a startup problem. The windowed build has no console to print to."""
-    if ui is None:
-        print(f"[{title}] {message}", flush=True)
-    else:
-        ui.notify_error(title, message, kind=kind)
+    print(f"[{title}] {message}", flush=True)
 
 
-def _start_backend(interface, ui):
-    """Take the single-instance lock and start the shared local server.
+def _start_backend():
+    """Take the single-instance lock and start the local server.
 
     Returns (server, exit_code). A None server means Lunar should just quit:
     exit_code 0 if another copy already owns the assistant, 1 if startup failed.
@@ -2571,23 +2525,22 @@ def _start_backend(interface, ui):
     global _SERVER, SERVE_UI
 
     if not _acquire_single_instance():
-        _notify(ui, "Lunar is already running",
-                "Another copy of Lunar is already open.\n\nLook for it on your taskbar, "
-                "or check the system tray.", kind="info")
+        _notify("Lunar is already running",
+                "Another copy of Lunar is already open.\n\nClose it, then open Lunar again.")
         return None, 0
 
     try:
         server = ThreadingHTTPServer((HOST, PORT), LunarRequestHandler)
     except OSError as error:
         print(f"[server] port {PORT} unavailable: {error}", flush=True)
-        _notify(ui, "Lunar could not start",
+        _notify("Lunar could not start",
                 f"Port {PORT} is already in use, so another copy of Lunar is probably "
                 f"still running.\n\nClose it, then open Lunar again.")
         return None, 1
 
     server.daemon_threads = True
     _SERVER = server
-    SERVE_UI = interface == UI_WEB
+    SERVE_UI = True
     threading.Thread(target=_serve_loop, args=(server,), daemon=True).start()
     return server, None
 
@@ -2601,24 +2554,6 @@ def _finish(server):
         pass
 
 
-def main():
-    """Desktop interface: Lunar in its own native window."""
-    ui = _notify_ui()
-    if ui is None:
-        print("[ui] lunar_ui.py is missing next to main.py", flush=True)
-        return 1
-
-    server, exit_code = _start_backend(UI_DESKTOP, ui)
-    if server is None:
-        return exit_code
-
-    create_desktop_shortcut()
-    try:
-        ui.run_desktop(sys.modules[__name__])
-    finally:
-        _finish(server)
-    return 0
-
-
 if __name__ == "__main__":
-    sys.exit(main())
+    print("[exit] main.py is the assistant module - start Lunar with web.py", flush=True)
+    sys.exit(1)
