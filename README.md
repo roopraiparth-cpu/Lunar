@@ -4,12 +4,11 @@
 
 # LUNAR
 
-*Your personal JARVIS — a voice-driven AI assistant for Windows.*
+*Your personal JARVIS — a voice-driven AI assistant for Windows, in your browser.*
 
 [![Platform](https://img.shields.io/badge/platform-Windows-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![Python](https://img.shields.io/badge/python-3.12%2B-informational)](https://www.python.org/)
-[![Desktop Release](https://img.shields.io/badge/desktop-v1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
-[![Web Release](https://img.shields.io/badge/web-v1.0-red)](https://github.com/roopraiparth-cpu/Lunar/releases)
+[![Release](https://img.shields.io/badge/release-v1.0-blue)](https://github.com/roopraiparth-cpu/Lunar/releases)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 **[Download](https://github.com/roopraiparth-cpu/Lunar/releases) · [Commands](#commands) · [Features](#features) · [Support](#support)**
@@ -23,72 +22,45 @@
 
 ## About
 
-Lunar is a Windows assistant inspired by JARVIS. It helps you check system
-status, control volume and brightness, and use voice commands through a
-straightforward interface.
+Lunar is a local AI assistant inspired by JARVIS. Talk to your PC and it
+responds — reporting system health, controlling volume and brightness, and
+running commands through a clean interface in your browser.
 
-Lunar is available in two editions:
-
-| Edition | Download | Interface |
-|---|---|---|
-| Desktop | `Lunar.exe` | Native Windows window |
-| Web | `LunarWeb.exe` | Opens in your browser |
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/2f804a33-9550-4186-814c-c5096e2dda97" alt="Lunar desktop app" width="238">
-</p>
-
-Lunar's system-control engine runs locally on your PC. The Web edition loads
-fonts from Google Fonts.
-
-> **Web edition notice:** The Web edition is scheduled to stop operating after
-> **30 October 2026**. Its current release will remain available to download,
-> but it will not receive new features. New development will focus on the
-> Desktop edition.
+One lightweight executable serves the interface locally and opens it in your
+default browser. The system-control engine runs entirely on your machine —
+no cloud dependency, no data leaving your PC.
 
 ## Getting Started
 
-1. Visit the [Releases](https://github.com/roopraiparth-cpu/Lunar/releases) page.
-2. Download and run `Lunar.exe` for the Desktop edition or `LunarWeb.exe` for
-   the Web edition. Python is not required to run either packaged app.
-3. Start using Lunar.
+1. Download `LunarWeb.exe` from the [Releases](https://github.com/roopraiparth-cpu/Lunar/releases) page
+2. Run it — the Lunar interface opens in your browser
+3. Start talking
 
-On first launch, Windows SmartScreen may warn that the app is unsigned. Only
-continue if you downloaded Lunar from this repository.
+No Python required — everything is bundled inside the executable.
 
-Run one edition at a time. They share a server, a port, and the microphone.
+> On first launch, Windows SmartScreen may warn about unsigned apps. Only
+> continue if you downloaded Lunar from this repository.
 
 ## Commands
 
 | Say this… | Lunar does… |
 |---|---|
-| “check battery” | Reports the battery level and charging state |
-| “volume up” or “volume down” | Adjusts system volume |
-| “mute” or “unmute” | Changes the audio mute state |
-| “homework” | Opens the configured school portal |
+| "check battery" | Reports the battery level and charging state |
+| "volume up" / "volume down" | Adjusts system volume |
+| "mute" / "unmute" | Changes the audio mute state |
+| "homework" | Opens the configured school portal |
 
-The interface also shows live CPU, RAM, GPU, battery, volume, and brightness
-information. You can use its controls without speaking.
+The interface also shows live CPU, RAM, GPU, battery, volume, and brightness —
+each with quick controls you can click without speaking.
 
 ## Features
 
-- Voice commands, wake mode, and dictation
-- Live system information: CPU, RAM, GPU, battery, volume, and brightness
-- Volume and brightness controls by voice or through the interface
-- Native Desktop edition built with Tkinter and GDI
-- Spoken replies using Windows SAPI, with voice and speed options
-- Automatic Desktop shortcut for the Desktop edition
-
-## Why it's light
-
-Approximate measurements for the Desktop edition:
-
-- **About 71 MB of RAM**
-- **About 0.8% CPU while idle**; usage varies by hardware and activity
-- **No GPU rendering**; Lunar reads the GPU utilisation counter for system
-  information
-
-The Web edition's browser may use additional system resources.
+- Voice commands, hands-free wake mode ("Lunar …"), and dictation
+- Live system telemetry: CPU, RAM, GPU, battery, volume, and brightness
+- Volume and brightness control by voice or by click
+- Local web interface — served on your machine, opened in your browser
+- Spoken replies using Windows SAPI, with selectable voice and speed
+- Zero-setup installation — one executable, no dependencies
 
 ## For Developers
 
@@ -99,38 +71,36 @@ python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 
-python main.py     # Desktop edition
-python web.py      # Web edition
+python web.py      # run from source
 ```
 
 To configure the portal opened by the `homework` command, set
-`LUNAR_HOMEWORK_URL` in Windows Command Prompt before starting Lunar:
+`LUNAR_HOMEWORK_URL` before starting Lunar:
 
 ```bat
 set LUNAR_HOMEWORK_URL=https://your-school.example/feed
-python main.py
+python web.py
 ```
 
 | File | Role |
 |---|---|
-| `main.py` | Command handling, system integration, and the local API server |
-| `lunar_ui.py` | Native Desktop interface |
-| `web.py` | Web entry point; serves `lunar.html` and opens the browser |
-| `lunar.html` | Interface used by the Web edition |
+| `web.py` | Entry point: serves the local API and `lunar.html`, opens the browser |
+| `lunar.html` | The Lunar interface |
+| `main.py` | Shared command handling and system integration |
 
-Build the executables with the included PyInstaller specifications:
+Build the executable with the included PyInstaller spec:
 
 ```bash
-pyinstaller Lunar.spec
 pyinstaller LunarWeb.spec
 ```
 
 ## Support
 
 Found a bug or have a feature request? Please open a
-[GitHub issue](https://github.com/roopraiparth-cpu/Lunar/issues).
+[GitHub issue](https://github.com/roopraiparth-cpu/Lunar/issues) — it helps
+everyone.
 
-For other support, email [roopraiparth900@gmail.com](mailto:roopraiparth900@gmail.com).
+For anything else, email [roopraiparth900@gmail.com](mailto:roopraiparth900@gmail.com).
 
 ## License
 
@@ -141,6 +111,8 @@ Distributed under the MIT License. See [LICENSE](LICENSE) for details.
 <div align="center">
 
 **Lunar** is built and maintained by **Moonfall Labs**.
+
+[Releases](https://github.com/roopraiparth-cpu/Lunar/releases) · [Issues](https://github.com/roopraiparth-cpu/Lunar/issues) · [Email support](mailto:roopraiparth900@gmail.com)
 
 © 2026 Moonfall Labs · Distributed under the [MIT License](LICENSE)
 
